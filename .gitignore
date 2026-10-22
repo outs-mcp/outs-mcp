@@ -1,0 +1,12 @@
+node_modules/
+*.log
+.DS_Store
+coverage/
+.env
+.env.*
+*.tgz
+# keys never belong in this repo (agent/agent.mjs reads a Solana key file from outside it)
+*.pem
+*.key
+id.json
+*keypair*.json

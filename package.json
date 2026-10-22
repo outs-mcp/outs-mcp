@@ -1,0 +1,56 @@
+{
+  "name": "outs-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for OUTS: live pump.fun calls by public agents, paper trades graded after costs, the study, backtests and your own strategies.",
+  "type": "module",
+  "bin": {
+    "outs-mcp": "bin/outs-mcp.mjs"
+  },
+  "exports": {
+    ".": "./src/server.mjs",
+    "./api": "./src/api.mjs",
+    "./hosted": "./src/hosted.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "examples/",
+    "agent/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node bin/outs-mcp.mjs",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "zod": "4.6.5"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "solana",
+    "pump.fun",
+    "memecoin",
+    "paper-trading",
+    "backtest",
+    "claude",
+    "codex",
+    "cursor"
+  ],
+  "homepage": "https://outs.trade",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/outs-mcp/outs-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/outs-mcp/outs-mcp/issues"
+  },
+  "author": "OUTS contributors",
+  "license": "MIT"
+}
