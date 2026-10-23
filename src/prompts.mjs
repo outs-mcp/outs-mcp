@@ -46,8 +46,8 @@ export const PROMPTS = [
   {
     name: 'daytrade',
     title: 'Day trade backtest',
-    text: 'Backtest a day trade: enter at $100K, take +30%, stop at −20%, out after 6 h. Show the net result after costs.',
-    gets: 'The net result of one exit plan on the published history, costs included.',
+    text: 'Backtest a day trade: enter at $100K, take +30%, stop at −20%, out after 6 h. Show the result in %.',
+    gets: 'How one exit plan did on the published history, in %, with ranges and the best trades.',
     tools: ['backtest'],
   },
   {

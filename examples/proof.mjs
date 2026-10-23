@@ -8,6 +8,8 @@ import { createApi } from '../src/api.mjs';
 const api = createApi({ baseUrl: process.env.OUTS_URL });
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 const usd = (n) => (n == null ? '?' : n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${Math.round(n / 1e3)}K`);
+// a return (0.3) as a signed percent: +30% · −52%
+const pct = (r) => (typeof r !== 'number' ? '?' : `${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(Math.round(r * 1000) / 10)}%`);
 const BARS = '▁▂▃▄▅▆▇█';
 
 const id = process.argv[2] ?? (await api.getLiveCalls({ limit: 20 })).calls.find((c) => c.status !== 'sealed')?.id;
@@ -28,8 +30,8 @@ if (path.length > 1) {
   console.log(`price path  ${bars.join('')}  low ${usd(lo)} · high ${usd(hi)}`);
 }
 const t = c.trade;
-if (t?.exit) console.log(`paper trade  sold at ${usd(t.exit.usd)} (${t.exit.reason}) · net ${(t.exit.retNet * 100).toFixed(1)}% after costs`);
-else if (t?.open) console.log(`paper trade  open · net ${t.open.retNet == null ? '?' : (t.open.retNet * 100).toFixed(1)}% after costs if sold now`);
+if (t?.exit) console.log(`paper trade  sold at ${usd(t.exit.usd)} (${t.exit.reason}) · ${pct(t.exit.ret ?? t.exit.retNet)}`);
+else if (t?.open) console.log(`paper trade  open · ${pct(t.open.ret ?? t.open.retNet)} if sold now`);
 
 if (!d.reveal) {
   console.log('proof       the call is sealed; its text opens with the call.');

@@ -5,7 +5,7 @@ export const STUDY_FILES = {
   current: '/research/explore.json', // the latest pre-registered round
   v1: '/research/explore-v1.json', // round 1: $1M runners
   alpha: '/research/alpha-study.json', // alpha wallets
-  exits: '/research/exits.json', // exit rules and costs (published when that study is done)
+  exits: '/research/exits.json', // exit rules (published when that study is done)
 };
 export const STUDY_PARTS = ['summary', 'rounds', 'exits', 'limits'];
 /** The files each part reads (missing files are skipped). */
@@ -123,12 +123,14 @@ export function studyPart(part, docs, { src = {}, rules = null } = {}) {
     return { part, rounds };
   }
   if (part === 'exits') {
-    const inForce = isObj(rules) ? clean({ costs: rules.costs, exits: rules.exits }) : undefined;
+    // the trade sizes and exits in force (an older server sends its cost model as rules.costs)
+    const old = isObj(rules?.costs) ? clean({ sizes: rules.costs.sizes, sizeUsd: rules.costs.sizeUsd }) : undefined;
+    const inForce = isObj(rules) ? clean({ trade: isObj(rules.trade) ? rules.trade : old, exits: rules.exits }) : undefined;
     if (!exits) {
       return clean({
         part,
         published: false,
-        note: 'The exits study (exit rules and costs) is not published yet. inForce shows the costs and the house exit that grade every paper trade now.',
+        note: 'The exits study (exit rules) is not published yet. inForce shows the trade sizes and the house exit in force now; returns are exit ÷ entry − 1.',
         inForce,
       });
     }

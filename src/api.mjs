@@ -5,6 +5,7 @@
 //   const { calls } = await api.getLiveCalls({ status: 'live', limit: 10 });
 import { VERSION } from './version.mjs';
 import { FILES_FOR, STUDY_FILES, STUDY_PARTS, studyPart } from './study.mjs';
+import { normReturns } from './returns.mjs';
 
 export const DEFAULT_URL = 'https://outs.trade';
 /** Lists never return more rows than this. */
@@ -14,6 +15,9 @@ export const AGENT_KINDS = ['house', 'outside', 'strategy'];
 /** get_coins_in_range sort → the field in /api/v1/eligible rows (largest first). */
 export const COIN_SORT = { buyers1h: 'buyers1h', vol1h: 'vol1hUsd', mcap: 'mcapUsd' };
 export const SIZES = [100, 500, 2000];
+/** backtest options: costs 'none' (price moves only) or 'legacy' (fees, impact, network fee); fill at the level or the close. */
+export const BACKTEST_COSTS = ['none', 'legacy'];
+export const BACKTEST_FILLS = ['level', 'close'];
 
 const KEY = /^[A-Za-z0-9_-]{1,64}$/; // agent keys and strategy ids (a path segment: no dots, no slashes)
 export const TOKEN = /^[A-Za-z0-9_-]{16,128}$/; // a strategy token, as create_strategy returns it
@@ -110,7 +114,7 @@ export function createApi({ baseUrl = DEFAULT_URL, publicUrl, fetch: doFetch = g
     if (status === 401 || status === 403) return new OutsApiError(`OUTS refused the token${why && why !== code ? ` (${why})` : ''}. Use the token create_strategy returned for this strategy id.`, opts);
     if (status === 413) return new OutsApiError('The request is larger than OUTS accepts (64 KB). Send a smaller strategy.', opts);
     if (status >= 400 && status < 500) return new OutsApiError(`OUTS refused the request (${status}${code ? ` ${code}` : ''})${why ? `: ${why}` : ''}. Fix the input and try again.`, opts);
-    if (status === 503 && code === 'backtest' && said) return new OutsApiError(`OUTS could not do this now (${status}): ${why}.`, opts);
+    if (status === 503 && path === '/api/v1/backtest' && (code === 'backtest' || code === 'busy') && said) return new OutsApiError(`OUTS could not do this now (${status}): ${why}.`, opts);
     return new OutsApiError(`OUTS had a server error (${status}). Try again in a minute; ${health} shows if it is up.`, opts);
   }
 
@@ -185,7 +189,8 @@ export function createApi({ baseUrl = DEFAULT_URL, publicUrl, fetch: doFetch = g
       if (optional) return null;
       throw new OutsApiError(`OUTS answered ${method} ${path} with something other than JSON. Check that OUTS_URL points at an OUTS site (now ${site}).`, { status: res.status, code: 'notJson', path });
     }
-    return data;
+    // API replies carry results under their gross names (ret, mean, …); an older server's *Net names are read as those
+    return path.startsWith('/api/') ? normReturns(data) : data;
   }
 
   // the trading endpoints are new: a 404 from them means "not on this server yet" unless the trades list answers
@@ -300,11 +305,14 @@ export function createApi({ baseUrl = DEFAULT_URL, publicUrl, fetch: doFetch = g
       });
     },
 
-    /** backtest → POST /api/v1/backtest */
-    backtest: async ({ strategy, id, sizeUsd } = {}) => {
+    /** backtest → POST /api/v1/backtest (results in %) */
+    backtest: async ({ strategy, id, sizeUsd, costs, fill, limit } = {}) => {
       if (!strategy && (id === undefined || id === null)) throw new OutsApiError('backtest needs a strategy (entry and exit) or the id of a saved strategy.', { code: 'input' });
       const sid = id === undefined || id === null ? undefined : key(id, 'id', 'Use the id create_strategy returned.');
-      return request('POST', '/api/v1/backtest', { body: { strategy, id: sid, sizeUsd: sizeOf(sizeUsd) }, on404: sid ? strategyMissing(sid) : NOT_YET });
+      if (costs !== undefined && !BACKTEST_COSTS.includes(costs)) throw new OutsApiError('costs must be none (price moves only, the default) or legacy (pool fees, price impact, network fee).', { code: 'input' });
+      if (fill !== undefined && !BACKTEST_FILLS.includes(fill)) throw new OutsApiError('fill must be level (the default) or close.', { code: 'input' });
+      if (limit !== undefined && !(Number.isInteger(limit) && limit >= 0 && limit <= MAX_ROWS)) throw new OutsApiError(`limit must be a whole number from 0 to ${MAX_ROWS}.`, { code: 'input' });
+      return request('POST', '/api/v1/backtest', { body: { strategy, id: sid, sizeUsd: sizeOf(sizeUsd), costs, fill, limit }, on404: sid ? strategyMissing(sid) : NOT_YET });
     },
 
     /** create_strategy → POST /api/v1/strategies */

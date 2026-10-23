@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createApi } from '../src/api.mjs';
-import { createOutsServer, compact, TOOL_NAMES, PROMPT_NAMES } from '../src/server.mjs';
+import { createOutsServer, compact, TOOLS, TOOL_NAMES, PROMPT_NAMES } from '../src/server.mjs';
 import { PROMPTS } from '../src/prompts.mjs';
 import { CONTRACT_PROMPTS, CONTRACT_TOOLS, FIXTURES, LEAF, outsRoutes, stubFetch } from './stub.mjs';
 
@@ -51,8 +51,9 @@ test('tools/list is the contract: names, order, descriptions, schemas, hints', a
   assert.deepEqual(byName.update_strategy.inputSchema.required.sort(), ['id', 'token']);
   assert.deepEqual(byName.run_strategy.inputSchema.required.sort(), ['id', 'on', 'token']);
   const exit = byName.create_strategy.inputSchema.properties.exit.properties;
-  assert.deepEqual(Object.keys(exit), ['tp', 'sl', 'trail', 'breakEvenAt', 'maxHoldMin']);
-  assert.equal(exit.maxHoldMin.anyOf?.[0]?.maximum ?? exit.maxHoldMin.maximum, 1440);
+  assert.deepEqual(Object.keys(exit), ['tp', 'sl', 'trail', 'breakEvenAt', 'maxHoldMin', 'minHoldMin', 'trailArmAt']);
+  assert.equal(exit.maxHoldMin.anyOf?.[0]?.maximum ?? exit.maxHoldMin.maximum, 4320);
+  assert.equal(exit.minHoldMin.anyOf?.[0]?.maximum ?? exit.minHoldMin.maximum, 4319);
   const entry = byName.create_strategy.inputSchema.properties.entry.properties;
   for (const k of ['mcapMin', 'mcapMax', 'ageMaxMin', 'chg1hMin', 'chg1hMax', 'turnoverMin', 'vol1hMin', 'buyers1hMin', 'organicMin', 'holdersMin', 'liquidityMin', 'rulesScoreMin', 'hasX', 'hasSite', 'hasTelegram', 'wordsAny', 'wordsNone']) {
     assert.ok(entry[k], `entry.${k}`);
@@ -70,7 +71,7 @@ test('prompts/list and prompts/get: the 8 contract prompts with the site texts',
   assert.deepEqual(PROMPT_NAMES, CONTRACT_PROMPTS);
   const day = await client.getPrompt({ name: 'daytrade' });
   assert.equal(day.messages[0].role, 'user');
-  assert.equal(day.messages[0].content.text, 'Backtest a day trade: enter at $100K, take +30%, stop at −20%, out after 6 h. Show the net result after costs.');
+  assert.equal(day.messages[0].content.text, 'Backtest a day trade: enter at $100K, take +30%, stop at −20%, out after 6 h. Show the result in %.');
   const alert = await client.getPrompt({ name: 'alert' });
   assert.equal(alert.messages[0].content.text, 'Send me a Telegram message each time an OUTS agent calls a coin under $300K. Add the top reasons.');
   for (const p of PROMPTS) {
@@ -122,6 +123,7 @@ test('trading tools send the contract request', async () => {
   const strategy = { entry: { ageMaxMin: 90, chg1hMin: 50 }, exit: { tp: 0.3, sl: 0.2, maxHoldMin: 360 } };
   const cases = [
     ['backtest', { strategy, sizeUsd: 2000 }, 'POST', '/api/v1/backtest', { strategy, sizeUsd: 2000 }],
+    ['backtest', { strategy, costs: 'legacy', fill: 'close', limit: 20 }, 'POST', '/api/v1/backtest', { strategy, costs: 'legacy', fill: 'close', limit: 20 }],
     ['create_strategy', { name: 'fast movers', ...strategy }, 'POST', '/api/v1/strategies', { name: 'fast movers', ...strategy }],
     ['update_strategy', { id, token: TOKEN, name: 'faster' }, 'PATCH', `/api/v1/strategies/${id}`, { name: 'faster' }],
     ['run_strategy', { id, token: TOKEN, on: false }, 'POST', `/api/v1/strategies/${id}/run`, { on: false }],
@@ -137,6 +139,15 @@ test('trading tools send the contract request', async () => {
   assert.equal(made.data.id, id);
   assert.ok(made.data.token, 'the token comes back once');
   await close();
+});
+
+test('backtest speaks in %: its description, the daytrade prompt, and no word "net"', () => {
+  const t = TOOLS.find((x) => x.name === 'backtest');
+  assert.match(t.description, /%/);
+  assert.doesNotMatch(t.description, /\bnet\b/i);
+  const day = PROMPTS.find((p) => p.name === 'daytrade');
+  assert.doesNotMatch(`${day.text} ${day.gets}`, /\bnet\b/i);
+  for (const k of ['costs', 'fill', 'limit']) assert.ok(t.input[k], `backtest.${k}`);
 });
 
 test('results are compact JSON with lists capped at 50 (a price path keeps its ends)', async () => {
@@ -170,6 +181,9 @@ test('errors reach the AI as words, and bad input is refused before any request'
     ['create_strategy', { name: 'x', entry: { minMcap: 200000 }, exit: {} }, /minMcap/],
     ['create_strategy', { name: 'x', entry: {}, exit: { sl: 1.5 } }, /sl/],
     ['backtest', { strategy: { entry: {} }, sizeUsd: 250 }, /sizeUsd/],
+    ['backtest', { strategy: { entry: {} }, costs: 'all' }, /costs/],
+    ['backtest', { strategy: { entry: {} }, fill: 'low' }, /fill/],
+    ['backtest', { strategy: { entry: {} }, limit: 51 }, /limit/],
     ['run_strategy', { id: 'k3j9x0aa', token: TOKEN }, /on/],
     ['run_strategy', { id: 'k3j9x0aa', token: 'short', on: true }, /token/],
   ]) {

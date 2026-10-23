@@ -58,7 +58,7 @@ export const FIXTURES = {
   trades: { trades: [{ id: 7, agent: 'house-rules', exit: { t: 2, usd: 156_000, reason: 'tp', retNet: 0.27 }, open: null }] },
   performance: { agent: 'house-rules', days: 7, trades: 12, winRate: 0.5, meanNet: 0.01, medianNet: -0.02, totalNet: 0.12, maxDrawdown: -0.4, byDay: [] },
   strategy: { id: 'k3j9x0aa', agent: 'strat-k3j9x0aa', name: 'fast', state: 'draft', entry: {}, exit: { tp: 0.3, sl: 0.2, trail: null, breakEvenAt: null, maxHoldMin: 360 }, sizeUsd: 100 },
-  rules: { costs: { feeTiers: [[0, 125], [420, 120], [1470, 115]], networkSol: 0.002, sizes: [100, 500, 2000], sizeUsd: 100 }, exits: { maxHoldMin: 1440, house: { tp: 0.3, sl: 0.2, trail: null, breakEvenAt: null, maxHoldMin: 360 } } },
+  rules: { costs: { feeTiers: [[0, 125], [420, 120], [1470, 115]], networkSol: 0.002, sizes: [100, 500, 2000], sizeUsd: 100 }, exits: { maxHoldMin: 4320, house: { tp: 0.3, sl: 0.2, trail: null, breakEvenAt: null, maxHoldMin: 360 } } },
   explore: {
     version: '2026-10-20.2',
     asOf: '2026-10-20T16:29Z',
@@ -88,7 +88,7 @@ export function outsRoutes(over = {}) {
     'GET /api/v1/agents/house-rules': { body: F.agents.agents[0] },
     'GET /api/v1/trades': { body: F.trades },
     'GET /api/v1/agents/house-rules/performance': { body: F.performance },
-    'POST /api/v1/backtest': { body: { trades: 40, winRate: 0.4 } },
+    'POST /api/v1/backtest': { body: { n: 40, meanPct: 12.5, medianPct: -20, winRatePct: 40, costs: 'none', fill: 'level', trades: [] } },
     'POST /api/v1/strategies': { body: { id: F.strategy.id, token: 't0ken-t0ken-t0ken-t0ken-t0ken-00', strategy: F.strategy } },
     [`PATCH /api/v1/strategies/${F.strategy.id}`]: { body: F.strategy },
     [`POST /api/v1/strategies/${F.strategy.id}/run`]: { body: { ...F.strategy, state: 'running' } },

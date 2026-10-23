@@ -98,6 +98,9 @@ test('trading writes send the body and the size; the token once, as a bearer hea
   await api.backtest({ id: FIXTURES.strategy.id });
   assert.deepEqual(last(fetch).body, { id: FIXTURES.strategy.id });
 
+  await api.backtest({ strategy, sizeUsd: 100, costs: 'legacy', fill: 'close', limit: 10 });
+  assert.deepEqual(last(fetch).body, { strategy, sizeUsd: 100, costs: 'legacy', fill: 'close', limit: 10 });
+
   const made = await api.createStrategy({ name: 'fast', ...strategy, sizeUsd: 100 });
   assert.deepEqual([last(fetch).method, last(fetch).path, last(fetch).body], ['POST', '/api/v1/strategies', { name: 'fast', ...strategy, sizeUsd: 100 }]);
   assert.ok(made.token);
@@ -121,6 +124,9 @@ test('trading writes send the body and the size; the token once, as a bearer hea
     await assert.rejects(api.runStrategy({ id, token: bad, on: true }), (e) => /token is not valid/.test(e.message) && !e.message.includes(bad));
   }
   await rejects(api.backtest({}), /needs a strategy/);
+  await rejects(api.backtest({ strategy, costs: 'all' }), /costs must be none \(price moves only, the default\) or legacy/);
+  await rejects(api.backtest({ strategy, fill: 'low' }), /fill must be level \(the default\) or close/);
+  await rejects(api.backtest({ strategy, limit: 51 }), /limit must be a whole number from 0 to 50/);
   await rejects(api.createStrategy({ name: 'x', entry: {}, exit: {}, sizeUsd: 300 }), /sizeUsd must be one of 100, 500, 2000/);
   await rejects(api.getStrategy({ id: '../calls' }), /not valid/);
   await rejects(api.getPerformance({ agent: 'a/b' }), /not valid/);
@@ -138,6 +144,8 @@ test('errors: rate limit, server errors and refusals come back as words with wha
 
   const busy = make(outsRoutes({ 'POST /api/v1/backtest': { status: 503, body: { error: 'backtest', reason: 'the backtest history is being published; try again later' } } }));
   await rejects(busy.api.backtest({ strategy: { entry: {} } }), /could not do this now \(503\): the backtest history is being published/);
+  const slow = make(outsRoutes({ 'POST /api/v1/backtest': { status: 503, body: { error: 'busy', reason: 'the backtest took too long; try again in a few seconds' } } }));
+  await rejects(slow.api.backtest({ strategy: { entry: {} } }), /could not do this now \(503\): the backtest took too long; try again in a few seconds/);
 
   const refused = make(outsRoutes({ 'POST /api/v1/strategies': { status: 400, body: { error: 'strategy', reason: 'entry.mcapMin must be between 100000 and 1000000' } } }));
   await rejects(refused.api.createStrategy({ name: 'x', entry: { mcapMin: 5 }, exit: {} }), /refused the request \(400 strategy\): entry\.mcapMin must be between 100000 and 1000000\. Fix the input/);
@@ -244,6 +252,8 @@ test('get_study: summary, rounds, exits and limits from the published files', as
   const x = await api.getStudy({ part: 'exits' });
   assert.equal(x.published, false, 'the HTML page for a missing file counts as not published');
   assert.deepEqual(x.inForce.exits.house, { tp: 0.3, sl: 0.2, trail: null, breakEvenAt: null, maxHoldMin: 360 });
+  assert.deepEqual(x.inForce.trade, { sizes: [100, 500, 2000], sizeUsd: 100 }, 'an older server: the sizes from its rules.costs, its cost model left out');
+  assert.equal(x.inForce.costs, undefined);
   assert.deepEqual(
     fetch.calls.map((c) => c.path),
     ['/research/exits.json', '/api/v1/rules'],
