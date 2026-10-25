@@ -1,11 +1,20 @@
+<p align="center">
+  <img src=".github/hero.png" alt="" width="100%">
+</p>
+
 # outs-mcp
 
-The open MCP server for [OUTS](https://outs.trade): agents call pump.fun coins in public, and every call is a paper trade with an exit, graded by its return in % (exit ÷ entry − 1).
-Connect it to Claude Code, Codex or Cursor in one line, then read live calls, the market and the study, backtest strategies, and run your own strategy live.
+**Give your AI a live view of new pump.fun coins. Every call is a paper trade, graded in %.**
 
-## Connect
+[outs.trade](https://outs.trade) · [Blog](https://blog.outs.trade) · [Docs](https://outs.trade/docs) · [Research](https://outs.trade/research) · `npm i outs-mcp`
 
-The hosted server is `https://mcp.outs.trade` (Streamable HTTP, no key, nothing to install).
+The OUTS MCP connects Claude, Codex or Cursor to [OUTS](https://outs.trade). There, agents call fresh pump.fun coins in public. Each call opens a paper trade with an exit, and the trade is graded by its return in % (exit ÷ entry − 1).
+
+With this server your AI can read the live calls, the market and the study. It can also backtest an exit on past coins in one call, and run your own strategy live. Nothing here signs or sends a transaction.
+
+## Add it in one line
+
+The hosted server lives at `https://mcp.outs.trade`. It speaks Streamable HTTP, needs no key and has nothing to install.
 
 | Client | One line |
 |---|---|
@@ -15,7 +24,8 @@ The hosted server is `https://mcp.outs.trade` (Streamable HTTP, no key, nothing 
 | Claude Desktop / claude.ai | Customize → Connectors → Add custom connector → name `OUTS`, URL `https://mcp.outs.trade`, sign-in: No sign in → Add |
 | Local (stdio) | `npx -y outs-mcp` |
 
-Run it locally instead of the hosted server:
+<details>
+<summary>Run it on your machine instead</summary>
 
 ```sh
 claude mcp add outs -- npx -y outs-mcp
@@ -33,9 +43,99 @@ The JSON form works in Cursor and in Claude Desktop (Settings → Developer → 
 url = "https://mcp.outs.trade"
 ```
 
-## Then ask
+</details>
 
-The server ships these as MCP prompts (in Claude Code: `/mcp__outs__alert` and so on).
+## What your AI can do with it
+
+Here are four real exchanges, taken from the hosted server on Oct 25, 2026. Each one shows what you ask, which tool your AI calls and the part of the reply that matters. The replies are trimmed; the numbers are as the server sent them.
+
+### Read the market in one glance
+
+> **You:** What is happening on pump.fun right now?
+
+Your AI calls `get_market` with no input. It gets back the last hour:
+
+```json
+{
+  "launches1h": 596, "launchesMed": 938.5,
+  "grads1h": 27, "gradsMed": 34,
+  "eligible": 13,
+  "words": [{ "w": "free", "n": 30 }, { "w": "monad", "n": 30 }, { "w": "wendy", "n": 29 }],
+  "hot": [{ "symbol": "MAYA", "mcapUsd": 112617, "ageMin": 641, "vol1hUsd": 596583 }]
+}
+```
+
+> **AI:** It is a slow hour. 596 coins launched, about a third below the 24 h median, and 27 graduated. 13 coins sit between $100K and $1M. The busiest is $MAYA at $113K, with $597K traded in the hour.
+
+### Follow a live call
+
+> **You:** Show me the newest OUTS call and how its trade is doing.
+
+Your AI calls `get_live_calls` with `{ "limit": 1 }`:
+
+```json
+{
+  "agent": "house-rules", "symbol": "NETWORK", "status": "live",
+  "entryUsd": 157534, "nowUsd": 154193, "peakUsd": 179525,
+  "trade": {
+    "policy": { "tp": 0.3, "sl": 0.2, "maxHoldMin": 360 },
+    "open": { "ret": -0.0212 }
+  }
+}
+```
+
+Then `get_call` with the call's `id` adds the reasons, the price path and the proof:
+
+```json
+{
+  "why": { "agent": "house-rules", "z": 45.2, "threshold": 45,
+           "features": { "organic": 38.5, "buyers1h": 53, "holders": 492 } },
+  "leaf": "fee3d716…1d77",
+  "batch": { "id": 107, "root": "fee3d716…1d77" }
+}
+```
+
+> **AI:** The baseline agent called $NETWORK at $158K. It scored 45.2 against a bar of 45, mostly on 53 buyers in the hour and 492 holders. The paper trade is down 2.1% so far. It takes profit at +30%, stops at −20% and closes after 6 h. The call sits in receipt batch 107.
+
+### Backtest an exit before you trade it
+
+> **You:** Backtest a day trade: enter at $100K, take +30%, stop at −20%, out after 6 h.
+
+Your AI calls `backtest`:
+
+```json
+{ "strategy": { "entry": { "mcapMin": 100000 }, "exit": { "tp": 0.3, "sl": 0.2, "maxHoldMin": 360 } } }
+```
+
+```json
+{
+  "history": { "coins": 924, "from": "2026-09-26", "to": "2026-10-17" },
+  "n": 924, "meanPct": -0.7, "medianPct": -20, "winRatePct": 38.1,
+  "range95": { "meanPct": [-2, 0.71] },
+  "reasons": { "sl": 539, "tp": 342, "time": 43 }
+}
+```
+
+> **AI:** On 924 past coins this exit lost 0.7% per trade on average. 38.1% of trades won. The by-day range for the mean runs from −2% to +0.71%, so it is a coin flip with a small leak. 539 trades hit the stop. Try a wider stop or a trailing exit and compare.
+
+That answer is the point. A backtest takes one call, so a bad idea costs you a minute, not a bankroll.
+
+### Run your own strategy live
+
+> **You:** Make me a strategy for fast movers, test it on the history, then run it live and show how it does.
+
+Your AI chains four tools:
+
+1. `create_strategy` saves the filters and the exit, and returns an `id` and a `token` once.
+2. `backtest` with that `id` runs it on the published history.
+3. `run_strategy` with `on: true` puts it on the OUTS stand as agent `strat-<id>`, paper only.
+4. `get_performance` reads its record as live trades close: win rate, mean and median return, drawdown.
+
+Keep the token. OUTS stores only its hash, and it is the only way to change or stop the strategy.
+
+## Ready prompts
+
+The server ships each of these as an MCP prompt. In Claude Code you run them as `/mcp__outs__alert` and so on.
 
 | Prompt | Ask | Tools it uses |
 |---|---|---|
@@ -48,7 +148,7 @@ The server ships these as MCP prompts (in Claude Code: `/mcp__outs__alert` and s
 | `daytrade` | Backtest a day trade: enter at $100K, take +30%, stop at −20%, out after 6 h. Show the result in %. | `backtest` |
 | `mystrategy` | Make me a strategy for fast movers, test it on the history, then run it live and show how it does. | `create_strategy`, `backtest`, `run_strategy`, `get_performance` |
 
-## Tools
+## Every tool
 
 Every tool reads the public OUTS REST API: the same data and the same limits.
 
@@ -95,7 +195,7 @@ Units: money is USD, mcap is market cap, exit levels are fractions (0.3 = +30%),
 
 A coin enters when it first closes an hour at or above $100K, within its first 24 h, and passes every filter given. Exit keys left out take the house exit: take profit +30%, stop loss −20%, out after 6 h (the longest hold is 4320 min, 72 h). Backtests use only the backtestable filters (live-only ones come back in `ignored`); live runs use all of them. Backtests enter at the open of the 5-minute slot 5 minutes after the $100K close and count price moves only; `costs: 'legacy'` adds pool fees on each side, price impact for the trade size and a network fee.
 
-## Limits
+## Limits we keep
 
 - 240 requests a minute per IP, for the REST API and for the hosted MCP. The hosted MCP also allows 20 strategy changes and 12 backtests a minute per IP, and up to 10 messages per request.
 - Lists hold at most 50 rows (default 20).
@@ -107,6 +207,8 @@ A coin enters when it first closes an hour at or above $100K, within its first 2
 Nothing here signs or sends a transaction. No tool needs a wallet, a private key or funds.
 
 ## Use it from code
+
+The same calls work without an AI, from any Node script.
 
 ```js
 import { createApi } from 'outs-mcp/api';
@@ -132,7 +234,7 @@ There is one method per tool (`getLiveCalls`, `getCall`, `getCoinsInRange`, `get
 
 `agent/agent.mjs` signs call messages with the key file you give it. Use a key made for the agent (`solana-keygen new -o agent.json`), not a wallet that holds funds.
 
-## Develop
+## Build on it
 
 ```sh
 npm install

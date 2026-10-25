@@ -256,11 +256,13 @@ export function createApi({ baseUrl = DEFAULT_URL, publicUrl, fetch: doFetch = g
     request,
 
     /** get_live_calls → GET /api/v1/calls */
-    getLiveCalls: async ({ status, agent, kind, limit } = {}) => {
+    getLiveCalls: async ({ status, agent, kind, all, limit } = {}) => {
       if (status !== undefined && !CALL_STATUS.includes(status)) throw new OutsApiError(`status must be one of ${CALL_STATUS.join(', ')}.`, { code: 'input' });
       if (kind !== undefined && !AGENT_KINDS.includes(kind)) throw new OutsApiError(`kind must be one of ${AGENT_KINDS.join(', ')}.`, { code: 'input' });
       const a = agent === undefined ? undefined : key(agent, 'agent', 'Agent keys come from get_agents.');
-      return request('GET', '/api/v1/calls', { query: { status, agent: a, kind, limit: rows(limit) } });
+      if (all !== undefined && typeof all !== 'boolean') throw new OutsApiError('all must be true or false.', { code: 'input' });
+      // originals only unless all: true (the server's default too); each row says original and originality.reasons
+      return request('GET', '/api/v1/calls', { query: { status, agent: a, kind, all: all ? '1' : undefined, limit: rows(limit) } });
     },
 
     /** get_call → GET /api/v1/calls/:id (a leaf is looked up through GET /api/v1/receipts/:leaf first) */

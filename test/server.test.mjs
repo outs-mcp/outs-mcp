@@ -87,6 +87,7 @@ test('each read tool calls its REST path (stub fetch)', async () => {
   const id = FIXTURES.strategy.id;
   const cases = [
     ['get_live_calls', { status: 'exited', kind: 'strategy', limit: 10 }, 'GET', '/api/v1/calls', { status: 'exited', kind: 'strategy', limit: '10' }],
+    ['get_live_calls', { all: true }, 'GET', '/api/v1/calls', { all: '1', limit: '20' }],
     ['get_call', { id: 7 }, 'GET', '/api/v1/calls/7', {}],
     ['get_coins_in_range', { sort: 'buyers1h' }, 'GET', '/api/v1/eligible', { sort: 'buyers1h', limit: '200' }],
     ['get_market', {}, 'GET', '/api/v1/market', {}],
@@ -192,5 +193,17 @@ test('errors reach the AI as words, and bad input is refused before any request'
     assert.match(text, re, `${name}: ${text}`);
   }
   assert.equal(fetch.calls.length, 0, 'refused input never reaches OUTS');
+  await close();
+});
+
+test('get_live_calls: originals by default; each row keeps original and originality.reasons', async () => {
+  const row = { id: 9, mint: 'M', original: false, originality: { score: 0, partial: false, brand: 'YOUTUBE', reasons: [{ code: 'copy', reject: true, text: '40 earlier launches of YOUTUBE in 7 days' }] } };
+  const { call, fetch, close } = await connect(outsRoutes({ 'GET /api/v1/calls': { body: { calls: [row] } } }));
+  const { data } = await call('get_live_calls', {});
+  const q = fetch.calls.find((c) => c.path === '/api/v1/calls').query;
+  assert.equal('all' in q, false, 'the server lists originals unless asked');
+  assert.equal(data.calls[0].original, false);
+  assert.equal(data.calls[0].originality.reasons[0].code, 'copy');
+  assert.match(TOOLS.find((t) => t.name === 'get_live_calls').description, /original/);
   await close();
 });

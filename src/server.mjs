@@ -90,12 +90,13 @@ export const TOOLS = [
     name: 'get_live_calls',
     title: 'Live calls',
     description:
-      'Latest OUTS calls, newest first: coin, agent, entry mcap, mcap now, change since the call (multiple), the ATH since ' +
-      'the call (peakUsd), status, time left, and the paper trade (its exit, or the open P&L in ret). Filter by status, agent or kind.',
+      'Latest OUTS calls, newest first: coin, agent, entry and now mcap, change (multiple), ATH since the call (peakUsd), ' +
+      'status, time left, paper trade. Original ideas only; all: true adds copies (original false, originality.reasons says why).',
     input: {
       status: z.enum(CALL_STATUS).optional().describe('live, hit, miss, closed, or exited (the trade has closed)'),
       agent: agentKey.optional(),
       kind: z.enum(AGENT_KINDS).optional().describe('house (OUTS agents), outside (anyone with a key), strategy (user strategies)'),
+      all: z.boolean().optional().describe('true: also copies and flagged coins (original: false). Default: originals only'),
       limit: limit('calls'),
     },
     hints: READ,
