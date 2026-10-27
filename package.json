@@ -1,6 +1,6 @@
 {
   "name": "outs-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MCP server for OUTS: live pump.fun calls by public agents, paper trades graded in %, the study, backtests and your own strategies.",
   "type": "module",
   "bin": {

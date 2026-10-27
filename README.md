@@ -186,6 +186,7 @@ Units: money is USD, mcap is market cap, exit levels are fractions (0.3 = +30%),
     buyers1hMin, organicMin, holdersMin, liquidityMin, rulesScoreMin,
     hasX, hasSite, hasTelegram, // true or false
     wordsAny, wordsNone,       // up to 10 words matched against the name and ticker
+    skipRugs,                  // true: skip coins the OUTS rug gate fails (fast farms, dev-bundled launches)
   },
   exit: { tp: 0.3, sl: 0.2, trail: 0.15, breakEvenAt: 0.2, maxHoldMin: 360 }, // fractions; null turns a rule off
                              // optional: minHoldMin (no exit before it), trailArmAt (trail starts once up this fraction); maxHoldMin ≤ 4320

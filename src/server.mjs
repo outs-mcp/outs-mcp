@@ -62,6 +62,7 @@ const entry = z
     hasTelegram: z.boolean().optional().describe('Live only. Has a Telegram link'),
     wordsAny: z.array(word).max(10).optional().describe('Live only. Name or ticker contains any of these words (up to 10)'),
     wordsNone: z.array(word).max(10).optional().describe('Live only. Name or ticker contains none of these words (up to 10)'),
+    skipRugs: z.boolean().optional().describe('Live only. Skip coins the OUTS rug gate fails: $100K under 20 min after launch, or a launch slot of 70%+ of supply bought by the dev alone or with reused wallets'),
   })
   .describe(
     'Entry filters; {} takes every coin. A coin enters at its first hourly close at or above $100K, within 24 h of launch, ' +
@@ -91,7 +92,7 @@ export const TOOLS = [
     title: 'Live calls',
     description:
       'Latest OUTS calls, newest first: coin, agent, entry and now mcap, change (multiple), ATH since the call (peakUsd), ' +
-      'status, time left, paper trade. Original ideas only; all: true adds copies (original false, originality.reasons says why).',
+      'status, time left, paper trade. Original ideas only; all: true adds copies (original false, originality.reasons says why). rug: the rug gate verdict on the coin (ok, reasons).',
     input: {
       status: z.enum(CALL_STATUS).optional().describe('live, hit, miss, closed, or exited (the trade has closed)'),
       agent: agentKey.optional(),
