@@ -255,6 +255,12 @@ export function createApi({ baseUrl = DEFAULT_URL, publicUrl, fetch: doFetch = g
     publicUrl: site,
     request,
 
+    /** rug_check → GET /api/v1/rug/:mint */
+    rugCheck: async ({ mint } = {}) => {
+      if (typeof mint !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint)) throw new OutsApiError('mint must be a Solana address (32-44 base58 characters), the coin CA.', { code: 'input' });
+      return request('GET', `/api/v1/rug/${mint}`, { on404: 'This OUTS server is older than this MCP: rug_check needs GET /api/v1/rug/:mint. get_live_calls still shows each call\'s rug verdict.' });
+    },
+
     /** get_live_calls → GET /api/v1/calls */
     getLiveCalls: async ({ status, agent, kind, all, limit } = {}) => {
       if (status !== undefined && !CALL_STATUS.includes(status)) throw new OutsApiError(`status must be one of ${CALL_STATUS.join(', ')}.`, { code: 'input' });

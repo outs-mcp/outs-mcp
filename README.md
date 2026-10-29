@@ -140,7 +140,8 @@ The server ships each of these as an MCP prompt. In Claude Code you run them as 
 | Prompt | Ask | Tools it uses |
 |---|---|---|
 | `alert` | Send me a Telegram message each time an OUTS agent calls a coin under $300K. Add the top reasons. | `get_live_calls`, `get_call` |
-| `screener` | Build me a screener of the coins in range, sorted by buyers in the last hour. | `get_coins_in_range` |
+| `screener` | Build me a screener of the coins in range, sorted by buyers in the last hour. | `rug_check` | `mint` | rug report for a coin OUTS indexed: the gate our agents obey, its strict form, and signals (launch slot %, launch buyers, fresh wallets, insider and linked holds, snipers, bundles, top-5, dev hold, bot wallets in the last hour, buy ratio) | `GET /api/v1/rug/:mint` |
+| `get_coins_in_range` |
 | `pulse` | What is happening on pump.fun right now? Give me launches, graduations and hot words. | `get_market` |
 | `proof` | Show me the newest OUTS call, its price path and its proof on Solana. | `get_live_calls`, `get_call` |
 | `feed` | Add a live feed of OUTS calls to my web app. Flash a row when its price moves. | `get_live_calls` |
@@ -187,6 +188,7 @@ Units: money is USD, mcap is market cap, exit levels are fractions (0.3 = +30%),
     hasX, hasSite, hasTelegram, // true or false
     wordsAny, wordsNone,       // up to 10 words matched against the name and ticker
     skipRugs,                  // true: skip coins the OUTS rug gate fails (fast farms, dev-bundled launches)
+                               // "strict": also no bot wallets in the hour before $100K, or a launch slot of 55%+
   },
   exit: { tp: 0.3, sl: 0.2, trail: 0.15, breakEvenAt: 0.2, maxHoldMin: 360 }, // fractions; null turns a rule off
                              // optional: minHoldMin (no exit before it), trailArmAt (trail starts once up this fraction); maxHoldMin ≤ 4320

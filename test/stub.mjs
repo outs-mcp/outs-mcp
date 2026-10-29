@@ -1,10 +1,11 @@
 // Test helpers: a stub fetch with canned OUTS replies (it records every request) and the same replies over HTTP.
 import http from 'node:http';
 
-// The tool and prompt names of the OUTS MCP contract v1 (2026-10-21), in order.
+// The tool and prompt names of the OUTS MCP contract v1 (2026-10-21; rug_check 2026-10-29), in order.
 export const CONTRACT_TOOLS = [
   'get_live_calls',
   'get_call',
+  'rug_check',
   'get_coins_in_range',
   'get_market',
   'get_agents',
@@ -82,6 +83,7 @@ export function outsRoutes(over = {}) {
     'GET /api/v1/calls': { body: F.calls },
     'GET /api/v1/calls/7': { body: F.detail },
     [`GET /api/v1/receipts/${LEAF}`]: { body: F.receipt },
+    [`GET /api/v1/rug/${MINT}`]: { body: { mint: MINT, known: true, pending: false, gate: { ok: true, partial: false, reasons: [] }, strict: { ok: false, partial: false, reasons: [{ code: 'noBots', text: 'no bot wallets in the hour before $100K' }] }, signals: { launchPct: 12, botLastHourPct: 0.4 } } },
     'GET /api/v1/eligible': { body: F.coins },
     'GET /api/v1/market': { body: F.market },
     'GET /api/v1/agents': { body: F.agents },

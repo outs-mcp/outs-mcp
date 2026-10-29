@@ -6,9 +6,9 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createApi } from '../src/api.mjs';
 import { createOutsServer, compact, TOOLS, TOOL_NAMES, PROMPT_NAMES } from '../src/server.mjs';
 import { PROMPTS } from '../src/prompts.mjs';
-import { CONTRACT_PROMPTS, CONTRACT_TOOLS, FIXTURES, LEAF, outsRoutes, stubFetch } from './stub.mjs';
+import { CONTRACT_PROMPTS, CONTRACT_TOOLS, FIXTURES, LEAF, MINT, outsRoutes, stubFetch } from './stub.mjs';
 
-const READS = ['get_live_calls', 'get_call', 'get_coins_in_range', 'get_market', 'get_agents', 'get_study', 'get_trades', 'get_performance', 'backtest', 'get_strategy'];
+const READS = ['get_live_calls', 'get_call', 'rug_check', 'get_coins_in_range', 'get_market', 'get_agents', 'get_study', 'get_trades', 'get_performance', 'backtest', 'get_strategy'];
 
 async function connect(routes = outsRoutes()) {
   const fetch = stubFetch(routes);
@@ -89,6 +89,7 @@ test('each read tool calls its REST path (stub fetch)', async () => {
     ['get_live_calls', { status: 'exited', kind: 'strategy', limit: 10 }, 'GET', '/api/v1/calls', { status: 'exited', kind: 'strategy', limit: '10' }],
     ['get_live_calls', { all: true }, 'GET', '/api/v1/calls', { all: '1', limit: '20' }],
     ['get_call', { id: 7 }, 'GET', '/api/v1/calls/7', {}],
+    ['rug_check', { mint: MINT }, 'GET', `/api/v1/rug/${MINT}`, {}],
     ['get_coins_in_range', { sort: 'buyers1h' }, 'GET', '/api/v1/eligible', { sort: 'buyers1h', limit: '200' }],
     ['get_market', {}, 'GET', '/api/v1/market', {}],
     ['get_agents', {}, 'GET', '/api/v1/agents', {}],

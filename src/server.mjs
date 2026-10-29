@@ -62,7 +62,13 @@ const entry = z
     hasTelegram: z.boolean().optional().describe('Live only. Has a Telegram link'),
     wordsAny: z.array(word).max(10).optional().describe('Live only. Name or ticker contains any of these words (up to 10)'),
     wordsNone: z.array(word).max(10).optional().describe('Live only. Name or ticker contains none of these words (up to 10)'),
-    skipRugs: z.boolean().optional().describe('Live only. Skip coins the OUTS rug gate fails: $100K under 20 min after launch, or a launch slot of 70%+ of supply bought by the dev alone or with reused wallets'),
+    skipRugs: z
+      .union([z.boolean(), z.literal('strict')])
+      .optional()
+      .describe(
+        'Live only. true: skip coins the OUTS rug gate fails ($100K under 20 min after launch, or a launch slot of 70%+ of supply bought by the dev alone or with reused wallets). ' +
+          '"strict": also skip coins with no bot wallets in the hour before $100K or a launch slot of 55%+ (fewer one-candle rugs, fewer trades)',
+      ),
   })
   .describe(
     'Entry filters; {} takes every coin. A coin enters at its first hourly close at or above $100K, within 24 h of launch, ' +
@@ -115,6 +121,17 @@ export const TOOLS = [
     },
     hints: READ,
     run: (api, a) => api.getCall(a),
+  },
+  {
+    name: 'rug_check',
+    title: 'Rug check',
+    description:
+      'Rug report for a coin OUTS indexed (it neared $100K): gate (the verdict our agents obey), strict (adds noBots, bigLaunch) and ' +
+      'signals: launch slot %, launch buyers, fresh wallets, insider holds, snipers, bundles, top-5, dev hold, bots in the last hour. ' +
+      'null = not read; pending = ask again in a minute.',
+    input: { mint: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/).describe('The coin CA (mint address)') },
+    hints: READ,
+    run: (api, a) => api.rugCheck(a),
   },
   {
     name: 'get_coins_in_range',
